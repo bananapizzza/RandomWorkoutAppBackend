@@ -7,7 +7,7 @@ const appRoot = path.resolve(__dirname);
 let workoutList;
 
 app.get('/', (req, res) => {
-    fs.readFile(`${path.parse(appRoot).dir}/data/workout_list`, 'utf-8', (err, data) => {
+    fs.readFile(`${path.parse(appRoot).dir}/data/workout_list.json`, 'utf-8', (err, data) => {
         //Save data as an array
         workoutList = JSON.parse(data).workouts;
 
