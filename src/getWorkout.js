@@ -9,7 +9,7 @@ let workoutList;
 app.get('/', (req, res) => {
     fs.readFile(`${path.parse(appRoot).dir}/data/workout_list`, 'utf-8', (err, data) => {
         //Save data as an array
-        workoutList = data.split(",");
+        workoutList = JSON.parse(data).workouts;
 
         //Select workout randomly from the array
         const selectedWorkout = workoutList[Math.floor(Math.random() * workoutList.length)];

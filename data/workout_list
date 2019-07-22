@@ -1,1 +1,3 @@
-Squat,Lunge,Push up,Burpee
+{
+    "workouts":[ "Squat", "Lunge", "Push up", "Burpee" ]
+}
