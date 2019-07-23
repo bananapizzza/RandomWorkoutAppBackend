@@ -5,7 +5,6 @@ const app = express();
 const path = require('path');
 const appRoot = path.resolve(__dirname);
 const cors = require('cors');
-let workoutList;
 
 app.use(express.json());
 app.use(cors());
@@ -13,7 +12,7 @@ app.use(cors());
 app.get('/', (req, res) => {
     fs.readFile(`${path.parse(appRoot).dir}/data/workout_list.json`, 'utf-8', (err, data) => {
         //Save data as an array
-        workoutList = JSON.parse(data).workouts;
+        const workoutList = JSON.parse(data).workouts;
 
         //Select workout randomly from the array
         const selectedWorkout = workoutList[Math.floor(Math.random() * workoutList.length)];
@@ -22,9 +21,23 @@ app.get('/', (req, res) => {
 });
 
 app.post('/check_login_info', (req, res) => {
-    console.log(req.body.username);
-    console.log(req.body.password);
-    res.send(JSON.stringify("hello"));
+    fs.readFile(`${path.parse(appRoot).dir}/data/user_list.json`, 'utf-8', (err, data) => {
+        const userList = JSON.parse(data).users;
+        let isValidUser = false;
+        for(i=0; i<userList.length; i++){
+            if(userList[i].username === req.body.username){
+                isValidUser = true;
+                if(userList[i].password === req.body.password) {
+                    res.send(JSON.stringify("Login Success"));
+                } else {
+                    res.send(JSON.stringify("Wrong Password"));
+                }
+            }
+        }
+        if(!isValidUser){
+            res.send(JSON.stringify("Invalid User"));
+        }
+    });
 });
 
 app.listen(port, () => {
