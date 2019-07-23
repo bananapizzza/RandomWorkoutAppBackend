@@ -30,11 +30,13 @@ app.post('/check_login_info', (req, res) => {
                 if(userList[i].password === req.body.password) {
                     res.send(JSON.stringify("Login Success"));
                 } else {
+                    res.statusCode = 401;
                     res.send(JSON.stringify("Wrong Password"));
                 }
             }
         }
         if(!isValidUser){
+            res.statusCode = 400;
             res.send(JSON.stringify("Invalid User"));
         }
     });
