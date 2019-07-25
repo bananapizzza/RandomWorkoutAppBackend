@@ -1,18 +1,32 @@
 const express = require('express');
-const port = 5000;
 const fs = require('fs');
 const app = express();
 const path = require('path');
 const appRoot = path.resolve(__dirname);
 const cors = require('cors');
+const util = require('util');
+
+const port = 5000;
+const readFileAsync = util.promisify(fs.readFile);
+const rootPath = path.parse(appRoot).dir;
 
 app.use(express.json());
 app.use(cors());
 
+async function getFileContent(filePath){
+    let fileContent;
+    try{
+        fileContent = await readFileAsync(filePath, 'utf-8');
+        return fileContent;
+    } catch (err) {
+        console.log('error: ', err);
+    }
+}
+
+//For selecting workout randomly
 app.get('/', (req, res) => {
-    fs.readFile(`${path.parse(appRoot).dir}/data/workout_list.json`, 'utf-8', (err, data) => {
-        //Save data as an array
-        const workoutList = JSON.parse(data).workouts;
+    getFileContent(`${rootPath}/data/workout_list.json`).then(fileContent => {
+        const workoutList = JSON.parse(fileContent).workouts;
 
         //Select workout randomly from the array
         const selectedWorkout = workoutList[Math.floor(Math.random() * workoutList.length)];
@@ -20,9 +34,10 @@ app.get('/', (req, res) => {
     });
 });
 
+//For checking login info
 app.post('/check_login_info', (req, res) => {
-    fs.readFile(`${path.parse(appRoot).dir}/data/user_list.json`, 'utf-8', (err, data) => {
-        const userList = JSON.parse(data).users;
+    getFileContent(`${rootPath}/data/user_list.json`).then(fileContent => {
+        const userList = JSON.parse(fileContent).users;
         let isValidUser = false;
         for(i=0; i<userList.length; i++){
             if(userList[i].username === req.body.username){
