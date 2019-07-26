@@ -8,6 +8,7 @@ const util = require('util');
 
 const port = 5000;
 const readFileAsync = util.promisify(fs.readFile);
+const writeFileAsync = util.promisify(fs.writeFile);
 const rootPath = path.parse(appRoot).dir;
 
 app.use(express.json());
@@ -54,8 +55,17 @@ app.post('/check_login_info', async (req, res) => {
         res.statusCode = 400;
         res.send(JSON.stringify("Invalid User"));
     }
+});
 
+//For signing up
+app.post('/sign_up', async (req, res) => {
+    const fileContent = await getFileContent(`${rootPath}/data/user_list.json`);
+    const jsonContent = JSON.parse(fileContent);
+    jsonContent['users'].push({username: req.body.username, password: req.body.password});
 
+   await writeFileAsync(`${rootPath}/data/user_list.json`, JSON.stringify(jsonContent));
+
+    res.send(JSON.stringify("Sign Up Success"));
 });
 
 app.listen(port, () => {
