@@ -45,8 +45,10 @@ app.get('/', async (req, res) => {
 app.post('/check_login_info', async (req, res) => {
     const fileContent = await getFileContent(`${rootPath}/data/user_list.json`);
     const userList = JSON.parse(fileContent).users;
+    const username = req.body.username;
+    const password = req.body.password;
 
-    switch (await checkLoginInfo(userList, req.body.username, req.body.password)) {
+    switch (await checkLoginInfo(username, password)) {
         case LOGIN_SUCCESS:
             res.send(JSON.stringify(LOGIN_SUCCESS));
             break;
@@ -95,17 +97,23 @@ async function getFileContent(filePath) {
     }
 }
 
-async function checkLoginInfo(userList, username, password) {
-    for (i = 0; i < userList.length; i++) {
-        if (userList[i].username === username) {
-            if (userList[i].password === password) {
+async function checkLoginInfo(username, password) {
+    return await (async () => {
+        try{
+            const sql = `SELECT password from users WHERE username=?`;
+            const queryResult = await queryDBAsync(sql, username);
+
+            if(queryResult.length === 0){
+                return INVALID_USER;
+            } else if(queryResult[0].password === password){
                 return LOGIN_SUCCESS;
             } else {
                 return WRONG_PASSWORD;
             }
+        } catch (err) {
+            console.log("checkLoginInfo err"+err);
         }
-    }
-    return INVALID_USER;
+    })();
 }
 
 async function checkSignUpInfo(username) {
