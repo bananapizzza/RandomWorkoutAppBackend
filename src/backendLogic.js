@@ -5,6 +5,7 @@ const path = require('path');
 const appRoot = path.resolve(__dirname);
 const cors = require('cors');
 const util = require('util');
+const mysql = require('mysql');
 
 const port = 5000;
 const INVALID_USER = 'INVALID_USER';
@@ -13,9 +14,17 @@ const WRONG_PASSWORD = 'WRONG_PASSWORD';
 const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
 const ALREADY_USED_ID = 'ALREADY_USED_ID';
 
+const pool = mysql.createPool({
+    host: "localhost",
+    user: "bananapizzza",
+    password: "1234",
+    database: "random_workout"
+});
+
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 const rootPath = path.parse(appRoot).dir;
+ const queryDBAsync = util.promisify(pool.query).bind(pool);
 
 app.use(express.json());
 app.use(cors());
@@ -54,18 +63,18 @@ app.post('/check_login_info', async (req, res) => {
 
 //For signing up
 app.post('/sign_up', async (req, res) => {
-    const fileContent = await getFileContent(`${rootPath}/data/user_list.json`);
-    const jsonContent = JSON.parse(fileContent);
-    const userList = jsonContent.users;
+    const username = req.body.username;
+    const password = req.body.password;
 
-    switch(await checkSignUpInfo(userList, req.body.username)) {
+    switch (await checkSignUpInfo(username)) {
         case SIGN_UP_SUCCESS:
             //Add the new user to the json
-            jsonContent['users'].push({username: req.body.username, password: req.body.password});
-            await writeFileAsync(`${rootPath}/data/user_list.json`, JSON.stringify(jsonContent));
+            await addNewUserToDB(username, password);
+            console.log("sign up success");
             res.send(JSON.stringify(SIGN_UP_SUCCESS));
             break;
         case ALREADY_USED_ID:
+            console.log("already used id");
             res.statusCode = 402;
             res.send(JSON.stringify(ALREADY_USED_ID));
             break;
@@ -99,11 +108,31 @@ async function checkLoginInfo(userList, username, password) {
     return INVALID_USER;
 }
 
-async function checkSignUpInfo(userList, username) {
-    for (i = 0; i < userList.length; i++) {
-        if (userList[i].username === username) {
-            return ALREADY_USED_ID;
+async function checkSignUpInfo(username) {
+    return await (async () => {
+        try{
+            const sql = `SELECT * from users WHERE username=?`;
+            const queryResult = await queryDBAsync(sql, username);
+            if (queryResult.length > 0) {
+                return ALREADY_USED_ID;
+            } else {
+                return SIGN_UP_SUCCESS;
+            }
+        } catch (err) {
+            console.log("checkSignUpInfo err: "+err);
         }
-    }
-    return SIGN_UP_SUCCESS;
+    })();
+}
+
+async function addNewUserToDB(username, password) {
+    return await (async () => {
+        try {
+            const values = [username, password];
+            const sql = `INSERT INTO users(username, password) VALUES (?, ?)`;
+            await queryDBAsync(sql, values);
+            console.log("Added new user to DB");
+        } catch (err) {
+            console.log("addNewUserToDB err: "+err);
+        }
+    })();
 }
