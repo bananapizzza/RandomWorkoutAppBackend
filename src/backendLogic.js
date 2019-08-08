@@ -6,6 +6,7 @@ const appRoot = path.resolve(__dirname);
 const cors = require('cors');
 const util = require('util');
 const mysql = require('mysql');
+const HttpStatus = require('http-status-codes');
 
 const port = 5000;
 const INVALID_USER = 'INVALID_USER';
@@ -13,6 +14,7 @@ const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
 const WRONG_PASSWORD = 'WRONG_PASSWORD';
 const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
 const ALREADY_USED_ID = 'ALREADY_USED_ID';
+const AVAILABLE_ID = 'AVAILABLE_ID';
 
 const pool = mysql.createPool({
     host: "localhost",
@@ -22,9 +24,8 @@ const pool = mysql.createPool({
 });
 
 const readFileAsync = util.promisify(fs.readFile);
-const writeFileAsync = util.promisify(fs.writeFile);
 const rootPath = path.parse(appRoot).dir;
- const queryDBAsync = util.promisify(pool.query).bind(pool);
+const queryDBAsync = util.promisify(pool.query).bind(pool);
 
 app.use(express.json());
 app.use(cors());
@@ -43,8 +44,6 @@ app.get('/', async (req, res) => {
 //TODO: After making logic for sign up, use crypto to encrypt password
 //For checking login info
 app.post('/check_login_info', async (req, res) => {
-    const fileContent = await getFileContent(`${rootPath}/data/user_list.json`);
-    const userList = JSON.parse(fileContent).users;
     const username = req.body.username;
     const password = req.body.password;
 
@@ -53,11 +52,11 @@ app.post('/check_login_info', async (req, res) => {
             res.send(JSON.stringify(LOGIN_SUCCESS));
             break;
         case WRONG_PASSWORD:
-            res.statusCode = 401;
+            res.statusCode = HttpStatus.UNAUTHORIZED;
             res.send(JSON.stringify(WRONG_PASSWORD));
             break;
         case INVALID_USER:
-            res.statusCode = 400;
+            res.statusCode = HttpStatus.UNAUTHORIZED;
             res.send(JSON.stringify(INVALID_USER));
             break;
     }
@@ -69,7 +68,7 @@ app.post('/sign_up', async (req, res) => {
     const password = req.body.password;
 
     switch (await checkSignUpInfo(username)) {
-        case SIGN_UP_SUCCESS:
+        case AVAILABLE_ID:
             //Add the new user to the json
             await addNewUserToDB(username, password);
             console.log("sign up success");
@@ -77,7 +76,7 @@ app.post('/sign_up', async (req, res) => {
             break;
         case ALREADY_USED_ID:
             console.log("already used id");
-            res.statusCode = 402;
+            res.statusCode = HttpStatus.CONFLICT;
             res.send(JSON.stringify(ALREADY_USED_ID));
             break;
     }
@@ -99,35 +98,35 @@ async function getFileContent(filePath) {
 
 async function checkLoginInfo(username, password) {
     return await (async () => {
-        try{
+        try {
             const sql = `SELECT password from users WHERE username=?`;
             const queryResult = await queryDBAsync(sql, username);
 
-            if(queryResult.length === 0){
+            if (queryResult.length === 0) {
                 return INVALID_USER;
-            } else if(queryResult[0].password === password){
+            } else if (queryResult[0].password === password) {
                 return LOGIN_SUCCESS;
             } else {
                 return WRONG_PASSWORD;
             }
         } catch (err) {
-            console.log("checkLoginInfo err"+err);
+            console.log("checkLoginInfo err" + err);
         }
     })();
 }
 
 async function checkSignUpInfo(username) {
     return await (async () => {
-        try{
+        try {
             const sql = `SELECT * from users WHERE username=?`;
             const queryResult = await queryDBAsync(sql, username);
             if (queryResult.length > 0) {
                 return ALREADY_USED_ID;
             } else {
-                return SIGN_UP_SUCCESS;
+                return AVAILABLE_ID;
             }
         } catch (err) {
-            console.log("checkSignUpInfo err: "+err);
+            console.log("checkSignUpInfo err: " + err);
         }
     })();
 }
@@ -140,7 +139,7 @@ async function addNewUserToDB(username, password) {
             await queryDBAsync(sql, values);
             console.log("Added new user to DB");
         } catch (err) {
-            console.log("addNewUserToDB err: "+err);
+            console.log("addNewUserToDB err: " + err);
         }
     })();
 }
